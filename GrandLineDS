@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grandline DS - Ultimate Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --ds-case: #2a2a2a;
+            --ds-case-inner: #1a1a1a;
+            --ds-screen-border: #050505;
+            --gold: #ffcc00;
+            --marine: #0044ff;
+            --danger: #ff4400;
+            --success: #00ffcc;
+            --button-grey: #333;
+        }
+
+        body {
+            background-color: #050505;
+            color: #eee;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            padding: 20px 0;
+        }
+
+        .viewport-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: scale(0.9);
+        }
+
+        @media (max-height: 800px) {
+            .viewport-wrapper { transform: scale(0.8); }
+        }
+
+        .ds-body {
+            width: 360px;
+            background: var(--ds-case);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0,0,0,1), inset 0 2px 5px rgba(255,255,255,0.1);
+            border: 1px solid #444;
+            position: relative;
+        }
+
+        .screen-container {
+            background: var(--ds-case-inner);
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #000;
+            display: flex;
+            justify-content: center;
+        }
+
+        .screen {
+            width: 256px;
+            height: 192px;
+            background: #000;
+            border: 4px solid var(--ds-screen-border);
+            position: relative;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        .hinge {
+            height: 24px;
+            background: linear-gradient(180deg, #111 0%, #333 50%, #111 100%);
+            margin: 8px -10px;
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px 0 5px;
+        }
+
+        .d-pad {
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+        .d-btn {
+            position: absolute;
+            background: #111;
+            border: 1px solid #333;
+            box-shadow: 0 2px 0 #000;
+        }
+        .d-up { width: 18px; height: 22px; top: 0; left: 21px; border-radius: 2px 2px 0 0; }
+        .d-down { width: 18px; height: 22px; bottom: 0; left: 21px; border-radius: 0 0 2px 2px; }
+        .d-left { width: 22px; height: 18px; top: 21px; left: 0; border-radius: 2px 0 0 2px; }
+        .d-right { width: 22px; height: 18px; top: 21px; right: 0; border-radius: 0 2px 2px 0; }
+
+        .action-buttons {
+            position: relative;
+            width: 70px;
+            height: 70px;
+        }
+        .a-btn {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #222;
+            border-radius: 50%;
+            border: 1px solid #444;
+            color: #666;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 0 #000;
+            cursor: default;
+        }
+        .btn-x { top: 0; left: 25px; }
+        .btn-b { bottom: 0; left: 25px; }
+        .btn-y { top: 25px; left: 0; }
+        .btn-a { top: 25px; right: 0; }
+
+        .touch-screen {
+            background: #0a0a0a;
+            cursor: crosshair;
+        }
+
+        .menu-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #888;
+            padding: 6px;
+            margin: 3px 15px;
+            text-align: center;
+            font-size: 8px;
+            text-transform: uppercase;
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .menu-btn:active { background: var(--gold); color: black; }
+        .menu-btn.completed { border-color: var(--success); color: var(--success); }
+
+        .hidden { display: none !important; }
+
+        .top-hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(0,68,255,0.05) 0%, transparent 100%);
+        }
+
+        .hud-line { display: flex; justify-content: space-between; font-size: 7px; color: var(--gold); }
+
+        #fish, #decoy {
+            position: absolute;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            transition: opacity 0.3s ease, transform 0.2s ease;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .flash-red { animation: flashRed 0.2s; }
+        @keyframes flashRed {
+            0% { background: rgba(255,0,0,0.6); }
+            100% { background: transparent; }
+        }
+
+        input.coord-input {
+            background: #000;
+            border: 1px solid #333;
+            color: var(--gold);
+            margin: 10px;
+            text-align: center;
+            padding: 5px;
+            font-family: inherit;
+            width: 80%;
+            font-size: 14px;
+        }
+
+        .coords-display {
+            text-align: center;
+            padding: 20px;
+            color: var(--success);
+        }
+
+        .coords-display h3 {
+            font-size: 10px;
+            color: var(--gold);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .coords-display .coord-line {
+            font-size: 12px;
+            margin: 8px 0;
+            font-weight: bold;
+        }
+
+        .coords-display .menu-btn {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="viewport-wrapper">
+    <div class="ds-body">
+        <div class="screen-container">
+            <div class="screen" id="top-screen">
+                <div id="top-canvas-container" style="width:100%; height:100%;"></div>
+                <div class="top-hud">
+                    <div class="hud-line">
+                        <span>GRANDLINE OS v4.5</span>
+                        <span id="top-status">MODE: VEILLE</span>
+                    </div>
+                    <div id="top-center-ui" style="text-align:center; flex-grow:1; display:flex; flex-direction:column; justify-content:center;">
+                        <div style="font-size:11px; letter-spacing: 1px; color:white;">SYSTÈME DE NAVIGATION</div>
+                        <div style="font-size:6px; color:var(--gold); margin-top:3px;">CALIBRAGE TACTILE REQUIS</div>
+                    </div>
+                    <div class="hud-line">
+                        <span id="top-coords">X: 000 Y: 000</span>
+                        <span>BAT: 92%</span>
+                    </div>
+                </div>
+                <div id="damage-flash" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:20;"></div>
+            </div>
+        </div>
+
+        <div class="hinge"></div>
+
+        <div class="screen-container">
+            <div class="screen touch-screen" id="bottom-screen">
+                <div id="ui-menu" style="padding-top:8px;">
+                    <div style="text-align:center; padding: 4px 0; font-size: 9px; color: var(--gold); font-weight:bold;">TERMINAL TACTILE</div>
+                    <div id="btn-dodge" class="menu-btn" onclick="showTutorial('dodge')">01. ESQUIVE</div>
+                    <div id="btn-nav" class="menu-btn" onclick="showTutorial('nav')">02. NAVIGATION</div>
+                    <div id="btn-fishing" class="menu-btn" onclick="showTutorial('fishing')">03. CAPTURE QUANTIQUE</div>
+                    
+                    <div style="margin: 8px 15px; height: 3px; background: #222; border-radius: 2px; overflow:hidden;">
+                        <div id="progress-fill" style="height:100%; background:var(--gold); width:0%; transition:0.5s;"></div>
+                    </div>
+                    <div style="text-align:center; font-size: 6px; color: #444;">GRANDLINE DS - USER_778</div>
+                </div>
+
+                <div id="ui-tutorial" class="hidden" style="display:flex; flex-direction:column; height:100%; justify-content:center; align-items:center; text-align:center;">
+                    <div id="tuto-text" style="padding:10px; font-size:8px; line-height:1.4;"></div>
+                    <div class="menu-btn" onclick="launchGame()" style="width:100px;">DÉMARRER</div>
+                </div>
+
+                <div id="ui-control" class="hidden" style="height:100%; position:relative;">
+                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); opacity:0.1; font-size:30px;">✛</div>
+                    <div style="position:absolute; bottom:8px; width:100%; text-align:center; font-size:7px;">
+                        PROGRESSION: <span id="game-timer">0</span>s
+                    </div>
+                    <div id="touch-area" style="width:100%; height:100%;" onmousemove="handleInput(event)" ontouchmove="handleInput(event)"></div>
+                </div>
+
+                <div id="ui-fishing" class="hidden" style="height:100%; position:relative; background:#050510;">
+                    <div id="fishing-area" style="width:100%; height:100%;">
+                        <div id="fish">💎</div>
+                        <div id="decoy">⚙️</div>
+                    </div>
+                    <div style="position:absolute; top:4px; right:8px; font-size:7px; color:var(--gold);">CAPTURES: <span id="fish-count">0</span>/10</div>
+                </div>
+
+                <div id="ui-secret" class="hidden" style="text-align:center; padding-top:15px;">
+                    <div style="font-size:9px; color:var(--gold); margin-bottom:5px;">CODE DE DÉCRYPTAGE</div>
+                    <input type="text" id="coords" class="coord-input" maxlength="4" placeholder="****">
+                    <div class="menu-btn" onclick="checkCoords()" style="width:80px; margin:10px auto;">VALIDER</div>
+                </div>
+
+                <div id="ui-coords" class="hidden coords-display">
+                    <h3>COORDONNÉES DÉVERROUILLÉES</h3>
+                    <div class="coord-line">X: <span id="coord-x">0</span></div>
+                    <div class="coord-line">Y: <span id="coord-y">0</span></div>
+                    <div class="menu-btn" onclick="backToMenu()" style="width:100px; margin:0 auto;">RETOUR</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-row">
+            <div class="d-pad">
+                <div class="d-btn d-up"></div>
+                <div class="d-btn d-down"></div>
+                <div class="d-btn d-left"></div>
+                <div class="d-btn d-right"></div>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+                <div style="width:25px; height:6px; background:#111; border-radius:3px; border:1px solid #333;"></div>
+                <div style="width:25px; height:6px; background:#111; border-radius:3px; border:1px solid #333;"></div>
+                <span style="font-size:5px; color:#444;">SELECT START</span>
+            </div>
+
+            <div class="action-buttons">
+                <div class="a-btn btn-x">X</div>
+                <div class="a-btn btn-y">Y</div>
+                <div class="a-btn btn-b">B</div>
+                <div class="a-btn btn-a">A</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let scene, camera, renderer, player, obstacles = [], currentMode = 'menu';
+    let progress = { dodge: false, nav: false, fishing: false };
+    let startTime, fishCount = 0, pendingGame = '';
+    let targetState = 'none'; 
+    let pathNodes = [];
+    let fishingInterval;
+    let currentGameForCode = '';
+
+    function init3D() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(70, 256 / 192, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer({ antialias: false });
+        renderer.setSize(256, 192);
+        document.getElementById('top-canvas-container').appendChild(renderer.domElement);
+        
+        camera.position.z = 8;
+        animate();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (currentMode === 'dodge') updateAvoidanceGame();
+        if (currentMode === 'nav') updateNavRadarGame();
+        
+        if (player && currentMode !== 'menu' && currentMode !== 'code-input' && currentMode !== 'coords') {
+            document.getElementById('top-coords').innerText = `X: ${Math.floor(player.position.x * 20)} Y: ${Math.floor(player.position.y * 20)}`;
+        }
+        renderer.render(scene, camera);
+    }
+
+    function clearScene() {
+        while(scene.children.length > 0) {
+            const object = scene.children[0];
+            if (object.geometry) object.geometry.dispose();
+            if (object.material) object.material.dispose();
+            scene.remove(object);
+        }
+        obstacles = [];
+        pathNodes = [];
+        const light = new THREE.PointLight(0xffffff, 2, 100);
+        light.position.set(5, 5, 5);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x444444));
+    }
+
+    function showTutorial(game) {
+        pendingGame = game;
+        document.getElementById('top-status').innerText = "CHARGEMENT...";
+        document.querySelectorAll('.touch-screen > div').forEach(d => d.classList.add('hidden'));
+        document.getElementById('ui-tutorial').classList.remove('hidden');
+        
+        let text = "";
+        if(game === 'dodge') text = "MISSION 01<br><br>ESQUIVE D'ASTEROÏDES<br><br>Maintenez le stylet pour piloter.<br>Survivez 15 secondes.";
+        if(game === 'nav') text = "MISSION 02<br><br>FLUX DE DONNÉES<br><br>Restez dans le courant bleu.<br>Suivez le tunnel.";
+        if(game === 'fishing') text = "MISSION 03<br><br>CAPTURE QUANTIQUE<br><br>Cliquez sur le diamant (💎).<br>Évitez-le s'il est ROUGE.<br>Ignorez les débris (⚙️).";
+        
+        document.getElementById('tuto-text').innerHTML = text;
+    }
+
+    function launchGame() {
+        if(pendingGame === 'dodge') startDodge();
+        if(pendingGame === 'nav') startNav();
+        if(pendingGame === 'fishing') startFishing();
+    }
+
+    function startDodge() {
+        currentMode = 'dodge';
+        clearScene();
+        updateUI();
+        document.getElementById('top-status').innerText = "ÉVASION";
+        document.getElementById('top-center-ui').style.display = 'none';
+        const geo = new THREE.ConeGeometry(0.3, 0.8, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x004444 });
+        player = new THREE.Mesh(geo, mat);
+        player.rotation.x = Math.PI / 2;
+        scene.add(player);
+        startTime = Date.now();
+    }
+
+    function updateAvoidanceGame() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        document.getElementById('game-timer').innerText = Math.min(elapsed, 15);
+        
+        if (elapsed >= 15) { 
+            progress.dodge = true;
+            showCoordinates(-1568.16, 4436.83);
+            return; 
+        }
+        
+        if (Math.random() < 0.08) {
+            const obs = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(0.4, 0), 
+                new THREE.MeshStandardMaterial({ color: 0xff0000, wireframe: true })
+            );
+            obs.position.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8, -20);
+            scene.add(obs);
+            obstacles.push(obs);
+        }
+        
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            obstacles[i].position.z += 0.3;
+            if (player && obstacles[i].position.distanceTo(player.position) < 0.7) {
+                triggerDamage();
+                startDodge(); 
+                return;
+            }
+            if (obstacles[i].position.z > 10) { 
+                scene.remove(obstacles[i]); 
+                obstacles.splice(i, 1); 
+            }
+        }
+    }
+
+    function startNav() {
+        currentMode = 'nav';
+        clearScene();
+        updateUI();
+        document.getElementById('top-status').innerText = "COULOIR";
+        document.getElementById('top-center-ui').style.display = 'none';
+        
+        camera.position.set(0, 10, 3);
+        camera.lookAt(0, 0, -10);
+        
+        player = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 16, 16), 
+            new THREE.MeshStandardMaterial({ 
+                color: 0xffff00, 
+                emissive: 0xffff00, 
+                emissiveIntensity: 0.8 
+            })
+        );
+        player.position.set(0, 0, 0);
+        scene.add(player);
+        
+        startTime = Date.now();
+        
+        for(let i = 0; i < 50; i++) {
+            createPathNode(-i * 1.2, 0);
+        }
+    }
+
+    function createPathNode(zPos, pFactor) {
+        const width = 6.0 - (pFactor * 2.0);
+        const xOffset = Math.sin(zPos * 0.4) * 3.5;
+        
+        const node = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, 1.5), 
+            new THREE.MeshBasicMaterial({ 
+                color: 0x0066ff, 
+                transparent: true, 
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            })
+        );
+        
+        node.rotation.x = -Math.PI / 2;
+        node.position.set(xOffset, 0, zPos);
+        scene.add(node);
+        
+        pathNodes.push({ mesh: node, x: xOffset, w: width, z: zPos });
+    }
+
+    function updateNavRadarGame() {
+        const elapsed = Date.now() - startTime;
+        const pFactor = Math.min(elapsed / 25000, 1);
+        document.getElementById('game-timer').innerText = Math.floor(pFactor * 100);
+        
+        if (pFactor >= 1) { 
+            progress.nav = true; 
+            showCodeInput('nav');
+            return; 
+        }
+        
+        let onPath = false;
+        const speed = 0.12 + (pFactor * 0.15);
+        
+        for (let i = pathNodes.length - 1; i >= 0; i--) {
+            pathNodes[i].mesh.position.z += speed;
+            pathNodes[i].z += speed;
+            
+            if (Math.abs(pathNodes[i].z - player.position.z) < 2.0) {
+                const distX = Math.abs(player.position.x - pathNodes[i].x);
+                if (distX < (pathNodes[i].w / 2)) {
+                    onPath = true;
+                }
+            }
+            
+            if (pathNodes[i].mesh.position.z > 15) {
+                const lastZ = pathNodes[pathNodes.length - 1].z;
+                scene.remove(pathNodes[i].mesh);
+                pathNodes.splice(i, 1);
+                createPathNode(lastZ - 1.2, pFactor);
+            }
+        }
+        
+        if (!onPath) { 
+            triggerDamage(); 
+            startNav(); 
+        }
+    }
+
+    function startFishing() {
+        currentMode = 'fishing';
+        fishCount = 0;
+        document.getElementById('fish-count').innerText = "0";
+        document.getElementById('top-status').innerText = "CAPTURE";
+        document.getElementById('top-center-ui').style.display = 'none';
+        clearScene();
+        updateUI();
+        
+        camera.position.set(0, 0, 8);
+        player = new THREE.Mesh(
+            new THREE.OctahedronGeometry(1.5), 
+            new THREE.MeshStandardMaterial({ color: 0x00ffff, wireframe: true })
+        );
+        scene.add(player);
+        
+        if(fishingInterval) clearTimeout(fishingInterval);
+        spawnTargetLoop();
+    }
+
+    function spawnTargetLoop() {
+        const f = document.getElementById('fish');
+        const d = document.getElementById('decoy');
+        const area = document.getElementById('fishing-area');
+
+        const nextMove = () => {
+            if(currentMode !== 'fishing') return;
+
+            f.style.opacity = 0;
+            d.style.opacity = 0;
+
+            setTimeout(() => {
+                if(currentMode !== 'fishing') return;
+                const maxX = area.clientWidth - 40;
+                const maxY = area.clientHeight - 40;
+                
+                f.style.left = Math.random() * maxX + 'px';
+                f.style.top = Math.random() * maxY + 'px';
+                f.style.background = "transparent";
+                f.style.boxShadow = "none";
+                f.style.borderRadius = "0";
+                targetState = 'none';
+
+                if(Math.random() < 0.3) {
+                    targetState = 'danger';
+                    f.style.background = "rgba(255, 0, 0, 0.6)";
+                    f.style.boxShadow = "0 0 10px red";
+                    f.style.borderRadius = "50%";
+                }
+
+                if(Math.random() < 0.6) {
+                    d.style.left = Math.random() * maxX + 'px';
+                    d.style.top = Math.random() * maxY + 'px';
+                    d.style.opacity = 0.8;
+                }
+
+                f.style.opacity = 1;
+            }, 250);
+
+            const speed = Math.max(350, 950 - (fishCount * 65));
+            fishingInterval = setTimeout(nextMove, speed);
+        };
+
+        nextMove();
+
+        f.onclick = (e) => {
+            e.stopPropagation();
+            if(targetState === 'danger') {
+                triggerDamage();
+                fishCount = 0;
+                document.getElementById('fish-count').innerText = "0";
+                clearTimeout(fishingInterval);
+                nextMove();
+            } else {
+                fishCount++;
+                document.getElementById('fish-count').innerText = fishCount;
+                f.style.transform = "scale(1.4)";
+                setTimeout(() => f.style.transform = "scale(1)", 100);
+                if(fishCount >= 10) {
+                    clearTimeout(fishingInterval);
+                    progress.fishing = true;
+                    showCodeInput('fishing');
+                }
+            }
+        };
+    }
+
+    function triggerDamage() {
+        const flash = document.getElementById('damage-flash');
+        flash.classList.add('flash-red');
+        setTimeout(() => flash.classList.remove('flash-red'), 200);
+    }
+
+    function handleInput(e) {
+        if (!player) return;
+        const rect = document.getElementById('bottom-screen').getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        const y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        
+        if (currentMode === 'dodge') {
+            const targetX = x * 4;
+            const targetY = y * 3;
+            player.position.x += (targetX - player.position.x) * 0.2;
+            player.position.y += (targetY - player.position.y) * 0.2;
+        } else if (currentMode === 'nav') {
+            const targetX = x * 6;
+            player.position.x += (targetX - player.position.x) * 0.15;
+        }
+    }
+
+    function updateUI() {
+        document.querySelectorAll('.touch-screen > div').forEach(d => d.classList.add('hidden'));
+        if (currentMode === 'menu') {
+            document.getElementById('ui-menu').classList.remove('hidden');
+            let p = 0;
+            if(progress.dodge) { p += 33; document.getElementById('btn-dodge').classList.add('completed'); }
+            if(progress.nav) { p += 33; document.getElementById('btn-nav').classList.add('completed'); }
+            if(progress.fishing) { p += 34; document.getElementById('btn-fishing').classList.add('completed'); }
+            document.getElementById('progress-fill').style.width = p + '%';
+        } else if (currentMode === 'code-input') {
+            document.getElementById('ui-secret').classList.remove('hidden');
+        } else if (currentMode === 'coords') {
+            document.getElementById('ui-coords').classList.remove('hidden');
+        } else {
+            document.getElementById(`ui-${currentMode === 'dodge' || currentMode === 'nav' ? 'control' : currentMode}`).classList.remove('hidden');
+        }
+    }
+
+    function showCoordinates(x, y) {
+        currentMode = 'coords';
+        document.getElementById('top-status').innerText = "SUCCÈS";
+        document.getElementById('top-center-ui').style.display = 'none';
+        document.getElementById('coord-x').innerText = x;
+        document.getElementById('coord-y').innerText = y;
+        updateUI();
+    }
+
+    function backToMenu() {
+        currentMode = 'menu';
+        document.getElementById('top-status').innerText = "MODE: VEILLE";
+        document.getElementById('top-center-ui').style.display = 'flex';
+        updateUI();
+    }
+
+    function showCodeInput(game) {
+        currentGameForCode = game;
+        currentMode = 'code-input';
+        document.getElementById('top-status').innerText = "CODE REQUIS";
+        document.getElementById('top-center-ui').style.display = 'none';
+        document.querySelectorAll('.touch-screen > div').forEach(d => d.classList.add('hidden'));
+        document.getElementById('ui-secret').classList.remove('hidden');
+        document.getElementById('coords').value = '';
+        document.getElementById('coords').focus();
+    }
+
+    function checkCoords() {
+        const input = document.getElementById('coords').value.trim();
+        const codes = {
+            'nav': '2709',
+            'fishing': '1304'
+        };
+        
+        const coords = {
+            'nav': { x: -2166.3, y: 5196.87 },
+            'fishing': { x: -186.91, y: 1563.13 }
+        };
+        
+        if (input === codes[currentGameForCode]) {
+            const c = coords[currentGameForCode];
+            showCoordinates(c.x, c.y);
+        } else {
+            alert("CODE INCORRECT");
+        }
+    }
+
+    window.onload = init3D;
+</script>
+</body>
+</html>
